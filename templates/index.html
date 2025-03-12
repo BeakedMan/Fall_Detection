@@ -12,28 +12,16 @@
         <form id="uploadForm" enctype="multipart/form-data" onsubmit="event.preventDefault(); uploadCSV();">
             <label for="file">Choose a CSV file:</label>
             <input type="file" id="file" name="file" accept=".csv">
-            <br>
-
-            <label for="model">Select Model:</label>
-            <select id="model" name="model">
-                <option value="cnn">CNN</option>
-                <option value="cnn_lstm">CNN + LSTM</option>
-                <option value="lstm">LSTM</option>
-                <option value="rnn">RNN</option>
-                <option value="gradient_boosting">Gradient Boosting</option>
-                <option value="random_forest">Random Forest</option>
-                <option value="svm">SVM</option>
-                <option value="gru">Gated Recurrent Unit</option>
-                <option value="xgboost">Extreme Gradient Boosting</option>
-                <option value="lightgbm">LightGBM</option>
-            </select>
             <br><br>
-
+            
             <button type="submit">Submit</button>
         </form>
 
-        <h2>Prediction Result</h2>
+        <h2>Aggregate Prediction Result</h2>
         <div id="resultdiv"></div>
+
+        <h2>Model-wise Predictions</h2>
+        <ul id="modelPredictions"></ul>
     </div>
 
     <script>
@@ -43,9 +31,9 @@
                 alert("Please select a CSV file.");
                 return;
             }
-
+    
             const formData = new FormData(document.getElementById('uploadForm'));
-
+    
             fetch('/predict', {
                 method: 'POST',
                 body: formData
@@ -53,10 +41,24 @@
             .then(response => response.json())
             .then(data => {
                 const resultDiv = document.getElementById('resultdiv');
-
+                const modelPredictions = document.getElementById('modelPredictions');
+    
                 if (data.result) {
-                    resultDiv.innerHTML = `<p>Predicted Class: ${data.result.class}</p>
-                                           <p>Confidence: ${data.result.confidence.toFixed(2)}</p>`;
+                    // Display final aggregated prediction
+                    resultDiv.innerHTML = `<p><strong>Final Prediction:</strong> ${data.result.final_prediction}</p>
+                                           <p><strong>Confidence:</strong> ${data.result.confidence.toFixed(2)}</p>`;
+    
+                    // Display model-wise predictions
+                    modelPredictions.innerHTML = "<h3>Breakdown by Model:</h3>";
+                    data.result.model_results.forEach(modelData => {
+                        modelPredictions.innerHTML += `
+                            <li>
+                                <strong>${modelData.model}:</strong> 
+                                ${modelData.prediction} 
+                                (Confidence: ${modelData.confidence.toFixed(2)})
+                            </li>`;
+                    });
+    
                 } else {
                     resultDiv.innerHTML = "<p style='color: red;'>Error processing the file.</p>";
                 }
@@ -67,5 +69,6 @@
             });
         }
     </script>
+    
 </body>
 </html>
