@@ -6,3 +6,6 @@ scikit-learn==1.6.0
 imbalanced-learn==0.12.4
 joblib==1.4.2
 Werkzeug==3.0.1
+lightgbm==4.6.0
+xgboost==2.1.4
+python-dotenv==1.0.1
