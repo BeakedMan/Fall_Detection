@@ -34,7 +34,7 @@ form label {
     color: #4a4a4a;
 }
 
-input[type="file"], select, button {
+input[type="file"], button {
     margin-top: 10px;
     font-size: 1rem;
     padding: 10px;
@@ -60,4 +60,27 @@ button:hover {
 #resultdiv {
     font-size: 1rem;
     color: #4a4a4a;
+    background-color: #e8f5e9;
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+    display: inline-block;
+    margin-top: 20px;
+}
+
+/* Model-wise Predictions List */
+#modelPredictions {
+    list-style: none;
+    padding: 0;
+    margin-top: 10px;
+    text-align: left;
+}
+
+#modelPredictions li {
+    background-color: #f9d5e5;
+    color: #333;
+    padding: 5px 10px;
+    border-radius: 5px;
+    margin: 5px 0;
+    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
 }
