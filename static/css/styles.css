@@ -13,8 +13,8 @@ body {
 
 /* Container */
 .container {
-    width: 90%;
-    max-width: 700px;
+    width: 95%;
+    max-width: 1600px;
     padding: 20px;
     background-color: #ffffff;
     border-radius: 10px;
@@ -22,65 +22,102 @@ body {
     text-align: center;
 }
 
-/* Headers */
-h1, h2 {
-    color: #4a4a4a;
+/* Refresh Indicator */
+.refresh-indicator {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: #4caf50;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 5px;
     font-weight: bold;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.5s ease-in-out, visibility 0.5s ease-in-out;
 }
 
-/* Form styles */
-form label {
-    font-size: 1rem;
-    color: #4a4a4a;
+.refresh-indicator.show {
+    opacity: 1;
+    visibility: visible;
 }
 
-input[type="file"], button {
-    margin-top: 10px;
-    font-size: 1rem;
-    padding: 10px;
-    border-radius: 5px;
-    border: 1px solid #ddd;
-    background-color: #f0e9ff;
-}
-
-/* Button styling */
-button {
-    background-color: #8ac6d1;
-    color: #ffffff;
-    cursor: pointer;
-    border: none;
-    transition: background-color 0.3s;
-}
-
-button:hover {
-    background-color: #5da5b3;
-}
-
-/* Prediction results */
-#resultdiv {
-    font-size: 1rem;
-    color: #4a4a4a;
-    background-color: #e8f5e9;
-    padding: 10px;
-    border-radius: 5px;
-    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
-    display: inline-block;
+/* Content Layout: Predictions & Graph Side by Side */
+.content-wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
     margin-top: 20px;
+    gap: 20px; /* Adjusted spacing */
 }
 
-/* Model-wise Predictions List */
+/* Prediction Section */
+.prediction-container {
+    width: 44%; /* Increased width to move closer to graph */
+    text-align: left;
+}
+
+/* Live Prediction Results */
+#livePrediction {
+    font-size: 1.2rem;
+    background-color: #e8f5e9;
+    padding: 15px; /* Adjusted padding */
+    border-radius: 8px;
+    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+    max-width: 420px; /* Increased width */
+}
+
+/* Model-wise Predictions */
 #modelPredictions {
     list-style: none;
     padding: 0;
     margin-top: 10px;
-    text-align: left;
 }
 
+/* Individual Prediction Items */
 #modelPredictions li {
     background-color: #f9d5e5;
     color: #333;
-    padding: 5px 10px;
+    padding: 8px 12px; /* Slightly increased padding */
     border-radius: 5px;
     margin: 5px 0;
     box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+    max-width: 420px; /* Increased width */
+}
+
+/* Graph Container - Slightly Adjusted */
+.graph-container {
+    width: 55%; /* Slightly reduced width to allow prediction section to grow */
+    text-align: center;
+}
+
+/* Sensor Data Graph */
+canvas {
+    width: 100% !important;
+    height: 460px !important; /* Slightly increased height */
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive Design */
+@media screen and (max-width: 768px) {
+    .content-wrapper {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .prediction-container, .graph-container {
+        width: 100%;
+        text-align: center;
+    }
+
+    #livePrediction,
+    #modelPredictions li {
+        max-width: 100%; /* Makes them full width on small screens */
+    }
+
+    canvas {
+        max-height: 300px;
+    }
 }

@@ -162,11 +162,14 @@ def latest_prediction():
 
     aggregated_result = aggregate_predictions(data)
 
+    # Extract sensor readings for visualization
+    readings = df.iloc[:, :6].values.tolist()
+
     # Mark data as processed
     df["Processed"] = "YES"
     df.to_csv(file_path, index=False)
 
-    return jsonify({"result": aggregated_result})
+    return jsonify({"result": aggregated_result, "readings": readings})
 
 @app.route("/predict", methods=["POST"])
 def predict():

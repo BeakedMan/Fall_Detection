@@ -5,32 +5,60 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fall Detection - Live Updates</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="container">
         <h1>Fall Detection System</h1>
 
-        <h2>Live Prediction Updates</h2>
-        <div id="livePrediction">
-            <p><strong>Final Prediction:</strong> <span id="liveFinalPrediction">Waiting for data...</span></p>
-            <p><strong>Confidence:</strong> <span id="liveConfidence">-</span></p>
-        </div>
+        <div id="refreshIndicator" class="refresh-indicator">Data Updated</div>
 
-        <h2>Model-wise Predictions</h2>
-        <ul id="modelPredictions"></ul>
+        <div class="content-wrapper">
+            <!-- Left Side: Live Prediction Results -->
+            <div class="prediction-container">
+                <h2>Live Prediction Updates</h2>
+                <div id="livePrediction">
+                    <p><strong>Final Prediction:</strong> <span id="liveFinalPrediction">Waiting for data...</span></p>
+                    <p><strong>Confidence:</strong> <span id="liveConfidence">-</span></p>
+                </div>
+
+                <h2>Model-wise Predictions</h2>
+                <ul id="modelPredictions"></ul>
+            </div>
+
+            <!-- Right Side: Sensor Graph -->
+            <div class="graph-container">
+                <h2>Sensor Data Visualization</h2>
+                <canvas id="sensorChart"></canvas>
+            </div>
+        </div>
     </div>
 
     <script>
+        let lastPrediction = null;
+        let lastConfidence = null;
+
         function fetchLivePrediction() {
             fetch('/latest_prediction')
                 .then(response => response.json())
                 .then(data => {
                     if (data.result) {
-                        document.getElementById("liveFinalPrediction").innerText = data.result.final_prediction;
-                        document.getElementById("liveConfidence").innerText = data.result.confidence.toFixed(2);
+                        const newPrediction = data.result.final_prediction;
+                        const newConfidence = data.result.confidence.toFixed(2);
+
+                        // Show refresh indicator if prediction OR confidence changes
+                        if (newPrediction !== lastPrediction || newConfidence !== lastConfidence) {
+                            showRefreshIndicator();
+                        }
+
+                        lastPrediction = newPrediction;
+                        lastConfidence = newConfidence;
+
+                        document.getElementById("liveFinalPrediction").innerText = newPrediction;
+                        document.getElementById("liveConfidence").innerText = newConfidence;
 
                         const modelPredictions = document.getElementById("modelPredictions");
-                        modelPredictions.innerHTML = "<h3>Breakdown by Model:</h3>";
+                        modelPredictions.innerHTML = "";
                         data.result.model_results.forEach(modelData => {
                             modelPredictions.innerHTML += `
                                 <li>
@@ -39,16 +67,78 @@
                                     (Confidence: ${modelData.confidence.toFixed(2)})
                                 </li>`;
                         });
-                    } else {
-                        document.getElementById("liveFinalPrediction").innerText = "Waiting for 400 readings...";
-                        document.getElementById("liveConfidence").innerText = "-";
-                        document.getElementById("modelPredictions").innerHTML = "";
+
+                        if (data.readings) {
+                            updateChart(data.readings);
+                        }
                     }
                 })
                 .catch(error => console.error("Error fetching live prediction:", error));
         }
 
-        setInterval(fetchLivePrediction, 5000); // Fetch live updates every 5 seconds
+        function showRefreshIndicator() {
+            const indicator = document.getElementById("refreshIndicator");
+            indicator.style.opacity = "1";
+            indicator.style.visibility = "visible";
+            
+            setTimeout(() => {
+                indicator.style.opacity = "0";
+                setTimeout(() => {
+                    indicator.style.visibility = "hidden";
+                }, 500); // Ensure it completely hides after fading out
+            }, 1500); // Stays visible for 1.5 seconds
+        }
+
+        let sensorChart;
+
+        function createChart() {
+            const ctx = document.getElementById('sensorChart').getContext('2d');
+            sensorChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({ length: 400 }, (_, i) => i + 1),
+                    datasets: [
+                        { label: 'AccX', data: [], borderColor: 'red', fill: false },
+                        { label: 'AccY', data: [], borderColor: 'blue', fill: false },
+                        { label: 'AccZ', data: [], borderColor: 'green', fill: false },
+                        { label: 'GyrX', data: [], borderColor: 'orange', fill: false, borderDash: [5, 5] },
+                        { label: 'GyrY', data: [], borderColor: 'purple', fill: false, borderDash: [5, 5] },
+                        { label: 'GyrZ', data: [], borderColor: 'cyan', fill: false, borderDash: [5, 5] },
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { title: { display: true, text: 'Sample Index (1-400)' } },
+                        y: { title: { display: true, text: 'Sensor Value' } }
+                    }
+                }
+            });
+        }
+
+        function updateChart(readings) {
+            const sensorData = {
+                accX: readings.map(r => r[0]),
+                accY: readings.map(r => r[1]),
+                accZ: readings.map(r => r[2]),
+                gyrX: readings.map(r => r[3]),
+                gyrY: readings.map(r => r[4]),
+                gyrZ: readings.map(r => r[5])
+            };
+
+            sensorChart.data.datasets[0].data = sensorData.accX;
+            sensorChart.data.datasets[1].data = sensorData.accY;
+            sensorChart.data.datasets[2].data = sensorData.accZ;
+            sensorChart.data.datasets[3].data = sensorData.gyrX;
+            sensorChart.data.datasets[4].data = sensorData.gyrY;
+            sensorChart.data.datasets[5].data = sensorData.gyrZ;
+
+            sensorChart.update();
+        }
+
+        createChart();
+        setInterval(fetchLivePrediction, 5000);
     </script>
 </body>
 </html>
