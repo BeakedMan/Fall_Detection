@@ -2,15 +2,13 @@ from flask import Flask, request, jsonify, render_template
 import pandas as pd
 import numpy as np
 import os
+from dotenv import load_dotenv
 import tensorflow as tf
-from werkzeug.utils import secure_filename
-from sklearn.preprocessing import StandardScaler
+import requests
 import joblib
+import datetime
+from werkzeug.utils import secure_filename
 from collections import Counter
-
-# Suppress TensorFlow Warnings
-os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 app = Flask(__name__)
 UPLOAD_FOLDER = "uploads"
@@ -18,11 +16,17 @@ WEIGHTS_FOLDER = "weights"
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 # Ensure necessary directories exist
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(WEIGHTS_FOLDER, exist_ok=True)
 
-if not os.path.exists(WEIGHTS_FOLDER):
-    os.makedirs(WEIGHTS_FOLDER)
+# Load environment variables
+load_dotenv("sec.env")
+
+# Meta WhatsApp API Configuration
+WHATSAPP_ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN")
+PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
+RECIPIENT_PHONE = os.getenv("RECIPIENT_PHONE")
+WHATSAPP_API_URL = f"https://graph.facebook.com/v22.0/{PHONE_NUMBER_ID}/messages"
 
 # Load model weights
 model_paths = {
@@ -39,16 +43,16 @@ model_paths = {
 }
 
 # Load deep learning models
-deep_learning_models = {}
-for model_name, path in model_paths.items():
-    if path.endswith(".h5") and os.path.exists(path):
-        deep_learning_models[model_name] = tf.keras.models.load_model(path, compile=False)
+deep_learning_models = {
+    model_name: tf.keras.models.load_model(path, compile=False)
+    for model_name, path in model_paths.items() if path.endswith(".h5") and os.path.exists(path)
+}
 
 # Load machine learning models
-ml_models = {}
-for model_name, path in model_paths.items():
-    if path.endswith(".pkl") and os.path.exists(path):
-        ml_models[model_name] = joblib.load(path)
+ml_models = {
+    model_name: joblib.load(path)
+    for model_name, path in model_paths.items() if path.endswith(".pkl") and os.path.exists(path)
+}
 
 # Class label mapping
 label_mapping = {
@@ -61,52 +65,36 @@ label_mapping = {
     6: "Walk",
 }
 
-# Data preprocessing function
-def preprocess_csv(file_path):
-    try:
-        df = pd.read_csv(file_path)
+# Function to send WhatsApp alert
+def send_whatsapp_message(motion_type, confidence):
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    message = (
+        f"⚠️ Alert: Fall Detected!\n"
+        f"📅 Timestamp: {timestamp}\n"
+        f"🏃 Motion Type: {motion_type}\n"
+        f"📊 Confidence: {confidence:.2f}\n"
+        f"\nStay safe! 🚨"
+    )
 
-        # Debug: Print raw CSV data
-        print("✅ CSV File Loaded Successfully:\n", df.head())
-
-        if df.shape[0] % 400 != 0 or df.shape[1] < 6:
-            print("⚠️ Invalid CSV Format: Incorrect row count or missing columns.")
-            return None
-
-        # Keep only first 6 columns (sensor data)
-        data = df.iloc[:, :6].to_numpy().reshape(-1, 400, 6)
-
-        print("✅ Processed Data Shape:", data.shape)
-        return data
-
-    except Exception as e:
-        print("❌ CSV Processing Error:", str(e))
-        return None
-
-# Prediction function for individual models
-def predict_from_model(data, model_name):
-    if model_name in deep_learning_models:
-        model = deep_learning_models[model_name]
-        predictions = model.predict(data)
-        predicted_class = np.argmax(predictions, axis=1)[0]
-        confidence = np.max(predictions, axis=1)[0]
-    elif model_name in ml_models:
-        model = ml_models[model_name]
-        if hasattr(model, "predict_proba"):
-            predictions = model.predict_proba(data.reshape(data.shape[0], -1))
-            predicted_class = np.argmax(predictions, axis=1)[0]
-            confidence = np.max(predictions, axis=1)[0]
-        else:
-            predictions = model.decision_function(data.reshape(data.shape[0], -1))
-            predicted_class = np.argmax(predictions, axis=1)[0]
-            confidence = np.abs(predictions).max()
-    else:
-        return None
-
-    return {
-        "class": label_mapping.get(predicted_class, "Unknown"),
-        "confidence": round(float(confidence), 2),
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": RECIPIENT_PHONE,
+        "type": "text",
+        "text": {"body": message}
     }
+
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_ACCESS_TOKEN}",
+        "Content-Type": "application/json"
+    }
+
+    response = requests.post(WHATSAPP_API_URL, json=payload, headers=headers)
+    
+    print(f"WhatsApp API Response ({response.status_code}):", response.json())
+
+    if response.status_code != 200:
+        print("❌ Error sending WhatsApp message:", response.text)
 
 # Aggregate predictions from all models
 def aggregate_predictions(data):
@@ -118,24 +106,27 @@ def aggregate_predictions(data):
             predicted_class = np.argmax(predictions, axis=1)[0]
             confidence = np.max(predictions, axis=1)[0]
         elif model_name in ml_models:
+            reshaped_data = data.reshape(data.shape[0], -1)
             if hasattr(model, "predict_proba"):
-                predictions = model.predict_proba(data.reshape(data.shape[0], -1))
+                predictions = model.predict_proba(reshaped_data)
                 predicted_class = np.argmax(predictions, axis=1)[0]
                 confidence = np.max(predictions, axis=1)[0]
             else:
-                predictions = model.decision_function(data.reshape(data.shape[0], -1))
+                predictions = model.decision_function(reshaped_data)
                 predicted_class = np.argmax(predictions, axis=1)[0]
                 confidence = np.abs(predictions).max()
 
         model_results.append({
-            "model": model_name.upper(),  # Display model name in uppercase
+            "model": model_name.upper(),
             "prediction": label_mapping.get(predicted_class, "Unknown"),
             "confidence": round(float(confidence), 2)
         })
 
-    # Compute final majority decision
     majority_label = Counter([result["prediction"] for result in model_results]).most_common(1)[0][0]
     avg_confidence = np.mean([result["confidence"] for result in model_results])
+
+    if majority_label in ["Fall", "LFall", "RFall", "Light"]:
+        send_whatsapp_message(majority_label, avg_confidence)
 
     return {
         "final_prediction": majority_label,
@@ -143,10 +134,39 @@ def aggregate_predictions(data):
         "model_results": model_results
     }
 
-
 @app.route("/")
 def index():
     return render_template("index.html")
+
+@app.route("/latest_prediction", methods=["GET"])
+def latest_prediction():
+    """Processes CSV only once per batch using 'Processed' flag"""
+    file_path = "sensor_data.csv"
+
+    if not os.path.exists(file_path):
+        return jsonify({"error": "No sensor data found"}), 404
+
+    df = pd.read_csv(file_path)
+
+    if "Processed" not in df.columns:
+        df["Processed"] = "NO"  # Ensure flag exists
+
+    # Check if the batch has already been processed
+    if all(df["Processed"] == "YES"):
+        return jsonify({"error": "Waiting for new data..."})
+
+    if df.shape[0] != 400 or df.shape[1] < 6:
+        return jsonify({"error": "Invalid CSV format. Ensure 400 rows and 6 columns."}), 400
+
+    data = df.iloc[:, :6].to_numpy().reshape(-1, 400, 6)
+
+    aggregated_result = aggregate_predictions(data)
+
+    # Mark data as processed
+    df["Processed"] = "YES"
+    df.to_csv(file_path, index=False)
+
+    return jsonify({"result": aggregated_result})
 
 @app.route("/predict", methods=["POST"])
 def predict():
@@ -154,7 +174,6 @@ def predict():
         return jsonify({"error": "No file provided"}), 400
 
     file = request.files["file"]
-
     if file.filename == "":
         return jsonify({"error": "No selected file"}), 400
 
@@ -164,15 +183,16 @@ def predict():
     file_path = os.path.join(app.config["UPLOAD_FOLDER"], secure_filename(file.filename))
     file.save(file_path)
 
-    # Process CSV
-    data = preprocess_csv(file_path)
-    if data is None:
-        return jsonify({"error": "Invalid CSV format. Ensure 400 rows per sample and 6 columns."}), 400
+    df = pd.read_csv(file_path)
 
-    # Aggregate predictions from all models
-    aggregated_result = aggregate_predictions(data)
+    if df.shape[0] != 400 or df.shape[1] < 6:
+        return jsonify({"error": "Invalid CSV format. Ensure 400 rows and 6 columns."}), 400
 
-    return jsonify({"result": aggregated_result})
+    # Reset Processed flag for new batch
+    df["Processed"] = "NO"
+    df.to_csv(file_path, index=False)
+
+    return jsonify({"message": "New data uploaded successfully!"})
 
 if __name__ == "__main__":
     app.run(debug=True)

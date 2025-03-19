@@ -2,73 +2,53 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Fall Detection - CSV Upload</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fall Detection - Live Updates</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
     <div class="container">
-        <h1>Upload CSV File for Prediction</h1>
+        <h1>Fall Detection System</h1>
 
-        <form id="uploadForm" enctype="multipart/form-data" onsubmit="event.preventDefault(); uploadCSV();">
-            <label for="file">Choose a CSV file:</label>
-            <input type="file" id="file" name="file" accept=".csv">
-            <br><br>
-            
-            <button type="submit">Submit</button>
-        </form>
-
-        <h2>Aggregate Prediction Result</h2>
-        <div id="resultdiv"></div>
+        <h2>Live Prediction Updates</h2>
+        <div id="livePrediction">
+            <p><strong>Final Prediction:</strong> <span id="liveFinalPrediction">Waiting for data...</span></p>
+            <p><strong>Confidence:</strong> <span id="liveConfidence">-</span></p>
+        </div>
 
         <h2>Model-wise Predictions</h2>
         <ul id="modelPredictions"></ul>
     </div>
 
     <script>
-        function uploadCSV() {
-            const fileInput = document.getElementById('file');
-            if (fileInput.files.length === 0) {
-                alert("Please select a CSV file.");
-                return;
-            }
-    
-            const formData = new FormData(document.getElementById('uploadForm'));
-    
-            fetch('/predict', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                const resultDiv = document.getElementById('resultdiv');
-                const modelPredictions = document.getElementById('modelPredictions');
-    
-                if (data.result) {
-                    // Display final aggregated prediction
-                    resultDiv.innerHTML = `<p><strong>Final Prediction:</strong> ${data.result.final_prediction}</p>
-                                           <p><strong>Confidence:</strong> ${data.result.confidence.toFixed(2)}</p>`;
-    
-                    // Display model-wise predictions
-                    modelPredictions.innerHTML = "<h3>Breakdown by Model:</h3>";
-                    data.result.model_results.forEach(modelData => {
-                        modelPredictions.innerHTML += `
-                            <li>
-                                <strong>${modelData.model}:</strong> 
-                                ${modelData.prediction} 
-                                (Confidence: ${modelData.confidence.toFixed(2)})
-                            </li>`;
-                    });
-    
-                } else {
-                    resultDiv.innerHTML = "<p style='color: red;'>Error processing the file.</p>";
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                document.getElementById('resultdiv').innerHTML = "<p style='color: red;'>An error occurred while processing.</p>";
-            });
+        function fetchLivePrediction() {
+            fetch('/latest_prediction')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.result) {
+                        document.getElementById("liveFinalPrediction").innerText = data.result.final_prediction;
+                        document.getElementById("liveConfidence").innerText = data.result.confidence.toFixed(2);
+
+                        const modelPredictions = document.getElementById("modelPredictions");
+                        modelPredictions.innerHTML = "<h3>Breakdown by Model:</h3>";
+                        data.result.model_results.forEach(modelData => {
+                            modelPredictions.innerHTML += `
+                                <li>
+                                    <strong>${modelData.model}:</strong> 
+                                    ${modelData.prediction} 
+                                    (Confidence: ${modelData.confidence.toFixed(2)})
+                                </li>`;
+                        });
+                    } else {
+                        document.getElementById("liveFinalPrediction").innerText = "Waiting for 400 readings...";
+                        document.getElementById("liveConfidence").innerText = "-";
+                        document.getElementById("modelPredictions").innerHTML = "";
+                    }
+                })
+                .catch(error => console.error("Error fetching live prediction:", error));
         }
+
+        setInterval(fetchLivePrediction, 5000); // Fetch live updates every 5 seconds
     </script>
-    
 </body>
 </html>
