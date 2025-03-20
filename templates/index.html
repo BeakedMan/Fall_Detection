@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
     <div class="container">
         <h1>Fall Detection System</h1>
@@ -80,7 +82,7 @@
             const indicator = document.getElementById("refreshIndicator");
             indicator.style.opacity = "1";
             indicator.style.visibility = "visible";
-            
+
             setTimeout(() => {
                 indicator.style.opacity = "0";
                 setTimeout(() => {
@@ -98,24 +100,49 @@
                 data: {
                     labels: Array.from({ length: 400 }, (_, i) => i + 1),
                     datasets: [
-                        { label: 'AccX', data: [], borderColor: 'red', fill: false },
-                        { label: 'AccY', data: [], borderColor: 'blue', fill: false },
-                        { label: 'AccZ', data: [], borderColor: 'green', fill: false },
-                        { label: 'GyrX', data: [], borderColor: 'orange', fill: false, borderDash: [5, 5] },
-                        { label: 'GyrY', data: [], borderColor: 'purple', fill: false, borderDash: [5, 5] },
-                        { label: 'GyrZ', data: [], borderColor: 'cyan', fill: false, borderDash: [5, 5] },
+                        { label: 'AccX', data: [], borderColor: 'rgba(255, 0, 0, 0.7)', borderWidth: 1, fill: false },
+                        { label: 'AccY', data: [], borderColor: 'rgba(0, 0, 255, 0.7)', borderWidth: 1, fill: false },
+                        { label: 'AccZ', data: [], borderColor: 'rgba(0, 128, 0, 0.7)', borderWidth: 1, fill: false },
+                        { label: 'GyrX', data: [], borderColor: 'rgba(255, 165, 0, 0.7)', borderWidth: 1, fill: false, borderDash: [5, 5] },
+                        { label: 'GyrY', data: [], borderColor: 'rgba(128, 0, 128, 0.7)', borderWidth: 1, fill: false, borderDash: [5, 5] },
+                        { label: 'GyrZ', data: [], borderColor: 'rgba(0, 255, 255, 0.7)', borderWidth: 1, fill: false, borderDash: [5, 5] }
                     ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    elements: {
+                        line: {
+                            tension: 0.3, // Slight curve to improve smoothness
+                        },
+                        point: {
+                            radius: 1.5, // Reduce point size to avoid clutter
+                            hoverRadius: 3
+                        }
+                    },
                     scales: {
-                        x: { title: { display: true, text: 'Sample Index (1-400)' } },
-                        y: { title: { display: true, text: 'Sensor Value' } }
+                        x: {
+                            title: { display: true, text: 'Sample Index (1-400)' },
+                            grid: { display: false } // Hide grid lines to improve visibility
+                        },
+                        y: {
+                            title: { display: true, text: 'Sensor Value' },
+                            grid: { color: 'rgba(200, 200, 200, 0.3)' } // Lighten grid color
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                font: {
+                                    size: 12 // Reduce legend font size
+                                }
+                            }
+                        }
                     }
                 }
             });
         }
+
 
         function updateChart(readings) {
             const sensorData = {
@@ -141,4 +168,5 @@
         setInterval(fetchLivePrediction, 5000);
     </script>
 </body>
+
 </html>
