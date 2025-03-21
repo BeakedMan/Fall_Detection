@@ -28,6 +28,9 @@ PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 RECIPIENT_PHONE = os.getenv("RECIPIENT_PHONE")
 WHATSAPP_API_URL = f"https://graph.facebook.com/v22.0/{PHONE_NUMBER_ID}/messages"
 
+# Location storage
+user_location = {"latitude": None, "longitude": None}
+
 # Load model weights
 model_paths = {
     "cnn": os.path.join(WEIGHTS_FOLDER, "cnn_model_80_20.h5"),
@@ -65,15 +68,21 @@ label_mapping = {
     6: "Walk",
 }
 
-# Function to send WhatsApp alert
+# Function to send WhatsApp alert with location
 def send_whatsapp_message(motion_type, confidence):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
+
+    # Construct location-based message
+    location_message = ""
+    if user_location["latitude"] and user_location["longitude"]:
+        location_message = f"\n📍 Location: https://www.google.com/maps?q={user_location['latitude']},{user_location['longitude']}"
+
     message = (
         f"⚠️ Alert: Fall Detected!\n"
         f"📅 Timestamp: {timestamp}\n"
         f"🏃 Motion Type: {motion_type}\n"
         f"📊 Confidence: {confidence:.2f}\n"
+        f"{location_message}\n"
         f"\nStay safe! 🚨"
     )
 
@@ -90,7 +99,7 @@ def send_whatsapp_message(motion_type, confidence):
     }
 
     response = requests.post(WHATSAPP_API_URL, json=payload, headers=headers)
-    
+
     print(f"WhatsApp API Response ({response.status_code}):", response.json())
 
     if response.status_code != 200:
@@ -134,7 +143,7 @@ def aggregate_predictions(data):
         "model_results": model_results
     }
 
-@app.route("/", methods=["GET","POST"])
+@app.route("/", methods=["GET", "POST"])
 def index():
     return render_template("index.html")
 
@@ -149,7 +158,7 @@ def latest_prediction():
     df = pd.read_csv(file_path)
 
     if "Processed" not in df.columns:
-        df["Processed"] = "NO"  # Ensure flag exists
+        df["Processed"] = "NO"
 
     # Check if the batch has already been processed
     if all(df["Processed"] == "YES"):
@@ -170,6 +179,18 @@ def latest_prediction():
     df.to_csv(file_path, index=False)
 
     return jsonify({"result": aggregated_result, "readings": readings})
+
+@app.route("/update_location", methods=["POST"])
+def update_location():
+    """Updates user location when received from frontend"""
+    global user_location
+    try:
+        data = request.get_json()
+        user_location["latitude"] = data.get("latitude")
+        user_location["longitude"] = data.get("longitude")
+        return jsonify({"message": "Location updated successfully!"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
 
 @app.route("/predict", methods=["POST"])
 def predict():

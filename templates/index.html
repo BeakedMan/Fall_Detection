@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -39,8 +38,37 @@
     <script>
         let lastPrediction = null;
         let lastConfidence = null;
+        let userLocation = { latitude: null, longitude: null };
+
+        // 📍 Function to fetch and update user location
+        function updateUserLocation() {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        userLocation.latitude = position.coords.latitude;
+                        userLocation.longitude = position.coords.longitude;
+
+                        // Send location to backend before prediction fetch
+                        fetch('/update_location', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(userLocation)
+                        }).then(response => response.json())
+                        .then(data => console.log("📍 Location Updated:", data))
+                        .catch(error => console.error("❌ Location Update Error:", error));
+                    },
+                    (error) => console.error("❌ Error Getting Location:", error),
+                    { enableHighAccuracy: true }
+                );
+            } else {
+                console.error("❌ Geolocation is not supported by this browser.");
+            }
+        }
 
         function fetchLivePrediction() {
+            // Update location before fetching new predictions
+            updateUserLocation();
+
             fetch('/latest_prediction')
                 .then(response => response.json())
                 .then(data => {
@@ -112,37 +140,21 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     elements: {
-                        line: {
-                            tension: 0.3, // Slight curve to improve smoothness
-                        },
-                        point: {
-                            radius: 1.5, // Reduce point size to avoid clutter
-                            hoverRadius: 3
-                        }
+                        line: { tension: 0.3 }, // Slight curve for smoothness
+                        point: { radius: 1.5, hoverRadius: 3 } // Reduce point size
                     },
                     scales: {
-                        x: {
-                            title: { display: true, text: 'Sample Index (1-400)' },
-                            grid: { display: false } // Hide grid lines to improve visibility
-                        },
-                        y: {
-                            title: { display: true, text: 'Sensor Value' },
-                            grid: { color: 'rgba(200, 200, 200, 0.3)' } // Lighten grid color
-                        }
+                        x: { title: { display: true, text: 'Sample Index (1-400)' }, grid: { display: false } },
+                        y: { title: { display: true, text: 'Sensor Value' }, grid: { color: 'rgba(200, 200, 200, 0.3)' } }
                     },
                     plugins: {
                         legend: {
-                            labels: {
-                                font: {
-                                    size: 12 // Reduce legend font size
-                                }
-                            }
+                            labels: { font: { size: 12 } }
                         }
                     }
                 }
             });
         }
-
 
         function updateChart(readings) {
             const sensorData = {
@@ -168,5 +180,4 @@
         setInterval(fetchLivePrediction, 5000);
     </script>
 </body>
-
 </html>
