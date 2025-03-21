@@ -9,3 +9,5 @@ Werkzeug==3.0.1
 lightgbm==4.6.0
 xgboost==2.1.4
 python-dotenv==1.0.1
+pyserial
+serial
