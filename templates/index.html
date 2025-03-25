@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fall Detection - Live Updates</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Fall Detection System</h1>
+
+    <div id="dataUpdated" class="fade-message">✔ Data Updated</div>
+
+    <h2>Live Prediction Updates</h2>
+    <div id="livePrediction">
+      <p><strong>Final Prediction:</strong> <span id="liveFinalPrediction">Waiting for data...</span></p>
+      <p><strong>Confidence:</strong> <span id="liveConfidence">-</span></p>
+    </div>
+
+    <h2>Sensor Readings (6-Axis)</h2>
+    <canvas id="sensorChart" width="400" height="250"></canvas>
+  </div>
+
+  <script>
+    let sensorChart = null;
+    let userLocation = { latitude: null, longitude: null };
+  
+    function updateUserLocationAndStartFetching() {
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            userLocation.latitude = position.coords.latitude;
+            userLocation.longitude = position.coords.longitude;
+  
+            // Send location to backend
+            fetch('/update_location', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(userLocation)
+            }).then(res => res.json())
+              .then(() => {
+                console.log("📍 Location updated. Starting prediction polling...");
+                fetchLivePrediction(); // Initial call
+                setInterval(fetchLivePrediction, 5000); // Continuous updates
+              });
+          },
+          (error) => {
+            console.error("❌ Error Getting Location:", error.message);
+            alert("❌ Location permission denied. Please enable it in your browser.");
+          },
+          { enableHighAccuracy: true }
+        );
+      } else {
+        alert("❌ Geolocation is not supported by this browser.");
+      }
+    }
+  
+    function fetchLivePrediction() {
+      fetch('/latest_prediction')
+        .then(res => res.json())
+        .then(data => {
+          if (data.result) {
+            document.getElementById("liveFinalPrediction").innerText = data.result.final_prediction;
+            document.getElementById("liveConfidence").innerText = data.result.confidence.toFixed(2);
+            updateSensorChart(data.result.raw_data);
+            showDataUpdated();
+          }
+        })
+        .catch(err => console.error("Fetch error:", err));
+    }
+  
+    function updateSensorChart(raw_data) {
+      const labels = Array.from({ length: raw_data.length }, (_, i) => i + 1);
+      const axisLabels = ['Acc X', 'Acc Y', 'Acc Z', 'Gyro X', 'Gyro Y', 'Gyro Z'];
+      const colors = ['red', 'blue', 'green', 'orange', 'purple', 'teal'];
+  
+      const datasets = axisLabels.map((label, i) => ({
+        label,
+        data: raw_data.map(row => row[i]),
+        borderColor: colors[i],
+        borderWidth: 1.5,
+        pointRadius: 0,
+        fill: false,
+        tension: 0.15
+      }));
+  
+      if (sensorChart) sensorChart.destroy();
+      const ctx = document.getElementById('sensorChart').getContext('2d');
+      sensorChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          animation: false,
+          plugins: {
+            legend: { position: 'top' }
+          },
+          scales: {
+            x: { title: { display: true, text: "Sample Index" } },
+            y: { title: { display: true, text: "Sensor Value" } }
+          }
+        }
+      });
+    }
+  
+    function showDataUpdated() {
+      const banner = document.getElementById("dataUpdated");
+      banner.style.opacity = 1;
+      banner.classList.add("fade-in");
+      setTimeout(() => {
+        banner.style.opacity = 0;
+        banner.classList.remove("fade-in");
+      }, 2000);
+    }
+  
+    // 📍 Start geolocation when page loads
+    window.onload = updateUserLocationAndStartFetching;
+  </script>
+  
+</body>
+
+</html>

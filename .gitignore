@@ -1,0 +1,112 @@
+# Ignore system-specific files
+.DS_Store
+Thumbs.db
+
+# Ignore Python cache and virtual environments
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+env/
+*.env
+*.venv
+
+# Ignore Jupyter Notebook checkpoints (if used)
+.ipynb_checkpoints/
+
+# Ignore logs and temporary files
+logs/
+*.log
+*.out
+*.err
+debug.log
+
+# Ignore dataset and large files (modify as needed)
+dataset/
+data/
+*.csv
+*.tsv
+*.json
+
+# Ignore machine learning model weights and checkpoints
+weights/
+models/
+checkpoints/
+*.h5
+*.ckpt
+*.tflite
+*.onnx
+*.pth
+*.pkl
+*.joblib
+*.pb
+
+# Ignore uploaded files
+uploads/
+
+# Ignore Arduino build and cache files
+*.elf
+*.hex
+*.bin
+*.ino.cache
+*.ino.ctags
+*.ino.dep
+*.ino.eep
+*.ino.hex
+*.ino.local.txt
+*.ino.sconsign.dblite
+
+# Ignore Wokwi simulation files (if applicable)
+wokwi-project.json
+
+# Ignore Flask cache and session
+instance/
+*.db
+*.sqlite
+*.sqlite3
+
+# Ignore API keys and credentials (sensitive information)
+whatsapp_api_keys.json
+facebook_token.json
+config.json
+secrets.json
+
+# Ignore VS Code and other IDE settings
+.vscode/
+*.code-workspace
+
+# Ignore Git history backups (if any)
+*.bak
+*.swp
+*.swo
+
+# Ignore compiled/intermediate files (if applicable)
+*.o
+*.obj
+*.so
+*.dll
+*.exe
+
+# Ignore build files
+build/
+dist/
+*.egg
+*.manifest
+*.spec
+
+# Ignore Node.js dependencies (if applicable)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Ignore generated files and temporary outputs
+generated/
+output/
+temp/
+training_runs/
+
+# Ignore Flask-related cache and logs
+*.pid
+*.lock
+flask_session/
